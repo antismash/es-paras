@@ -10,10 +10,11 @@ from antismash.__main__ import main as as_main
 
 import es_paras
 import es_paras.overrides
-
+from es_paras import html
 
 antismash.modules.nrps_pks.specific_analysis = es_paras.overrides.specific_analysis
-
+antismash.main.get_output_modules = lambda: [html]
+antismash.main.html = html
 
 def main(args: list[str]) -> int:
     """Run experimentalSMASH - PARAS"""
