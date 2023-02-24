@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "es_paras"
+authors = [
+    {name = "Kai Blin", email = "kblin@biosustain.dtu.dk"},
+]
+description = "experimentalSMASH - Try out PARAS for A domain predictions"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.9"
+license = {text = "AGPL-3.0-or-later"}
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "antismash @ git+https://github.com/antismash/antismash.git@ba3cf6d679161b9f860a01bbaac277d46e39527d",
+    "paras @ git+https://github.com/BTheDragonMaster/paras.git@ab2afe9f0ad7e1399d7ba367ab0a1818f3fc66a8",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["flake8", "flake8-pyproject", "pylint", "mypy", "pytest", "coverage"]
+
+[project.scripts]
+es-paras = "es_paras.__main__:entrypoint"
+
+[tool.setuptools.dynamic]
+version = {attr = "es_paras.VERSION"}
+
+[tool.flake8]
+max-line-length = 100
