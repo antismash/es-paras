@@ -2,19 +2,90 @@
 # A copy of GNU AGPL v3 should have been included in this software package in LICENSE.txt.
 """Run experimentalSMASH - PARAS"""
 
+from datetime import datetime
 import sys
 
 import antismash
+from antismash.config.args import AntismashParser
 import antismash.modules.nrps_pks
 from antismash.__main__ import main as as_main
 
-import es_paras
-import es_paras.overrides
 from es_paras import html
 
-antismash.modules.nrps_pks.specific_analysis = es_paras.overrides.specific_analysis
 antismash.main.get_output_modules = lambda: [html]
 antismash.main.html = html
+
+# instantiate ModuleArgs here, because otherwise the AntismashParser override
+# causes a recursive loop
+EXTRA_ARGS = antismash.config.args.ModuleArgs("Experimental options", "", override_safeties=True, basic_help=True)
+EXTRA_ARGS.add_option("--experimental-name",
+                      dest="experimental_name",
+                      type=str,
+                      required=True,
+                      default="",
+                      help="The experimental branch name to use in the outputs")
+
+
+def parser_wrapper(*args, **kwargs) -> AntismashParser:
+    parents = kwargs.get("parents", [])
+    # only override when parents are present, since all ModuleArgs use this
+    if parents:
+        parents.append(EXTRA_ARGS)
+        kwargs["parents"] = parents
+    return AntismashParser(*args, **kwargs)
+
+
+antismash.config.args.AntismashParser = parser_wrapper
+
+
+def add_antismash_comments(records: list[tuple[antismash.main.Record, antismash.main.SeqRecord]],
+                           options: antismash.config.ConfigType) -> None:
+    """ Add antismash meta-annotation to records for genbank output
+
+        Arguments:
+            records: a list of Record, SeqRecord pairs
+            options: antismash options
+
+        Returns:
+            None
+
+    """
+    if not records:
+        return
+    shared = [
+        "WARNING: This was generated with an experimental antiSMASH version\n",
+    ]
+    # include start/end details if relevant
+    if options.start != -1 or options.end != -1:
+        start = 1 if options.start == -1 else options.start
+        # start/end is only valid for single records, as per record_processing
+        assert len(records) == 1
+        end = len(records[0][0].seq) if options.end == -1 else options.end
+        shared.append(
+            "NOTE: This is an extract from the original record!\n"
+            f"Starting at  :: {start}\n"
+            f"Ending at    :: {end}\n"
+        )
+    antismash_comment = (
+        "##antiSMASH-Data-START##\n"
+        f"Version      :: {options.experimental_name} (based on {options.version})\n"
+        f"Run date     :: {str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}\n"
+        "%s"
+        "##antiSMASH-Data-END##"
+    )
+    for record, bio_record in records:
+        extras: list[str] = []
+        if record.original_id:
+            extras.append(f"Original ID  :: {record.original_id}\n")
+
+        comment = antismash_comment % "".join(extras + shared)
+        if 'comment' in bio_record.annotations:
+            bio_record.annotations['comment'] += '\n' + comment
+        else:
+            bio_record.annotations['comment'] = comment
+
+antismash.main.add_antismash_comments = add_antismash_comments
+
 
 def main(args: list[str]) -> int:
     """Run experimentalSMASH - PARAS"""
